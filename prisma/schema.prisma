@@ -1,11 +1,9 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider   = "prisma-client"
-  output = "../app/generated/prisma"
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
 }
 
 datasource db {
@@ -48,14 +46,101 @@ enum RiskLevel {
   HIGH
 }
 
+model User {
+  id                String        @id @default(cuid())
+  name              String
+  email             String        @unique
+  role              AppRole       @default(SUPPORT)
+  createdAt         DateTime      @default(now())
+  assignedOrders    Order[]
+  createdReturns    Return[]
+  notes             Note[]
+  activityLogs      ActivityLog[]
+}
+
+model Customer {
+  id           String    @id @default(cuid())
+  fullName     String
+  email        String
+  phone        String?
+  createdAt    DateTime  @default(now())
+  orders       Order[]
+}
+
 model Order {
   id               String        @id @default(cuid())
+  orderNumber      String        @unique
+  customerId       String
   status           OrderStatus   @default(NEW)
   priority         OrderPriority @default(LOW)
+  totalAmount      Float
+  currency         String
+  placedAt         DateTime
   assignedToUserId String?
   hasIssue         Boolean       @default(false)
   issueType        String?
   needsFollowUp    Boolean       @default(false)
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
+  customer         Customer      @relation(fields: [customerId], references: [id])
+  assignedToUser   User?         @relation(fields: [assignedToUserId], references: [id])
+  items            OrderItem[]
+  returns          Return[]
+  notes            Note[]
+  activityLogs     ActivityLog[]
+  aiSummaries      AiSummary[]
+}
+
+model OrderItem {
+  id          String   @id @default(cuid())
+  orderId     String
+  productName String
+  sku         String
+  quantity    Int
+  unitPrice   Float
+  order       Order    @relation(fields: [orderId], references: [id])
+}
+
+model Return {
+  id              String       @id @default(cuid())
+  orderId         String
+  status          ReturnStatus @default(REQUESTED)
+  reason          String
+  requestedAt     DateTime     @default(now())
+  resolvedAt      DateTime?
+  refundAmount    Float?
+  createdByUserId String
+  order           Order        @relation(fields: [orderId], references: [id])
+  createdByUser   User         @relation(fields: [createdByUserId], references: [id])
+}
+
+model Note {
+  id           String   @id @default(cuid())
+  orderId      String
+  authorUserId String
+  body         String
+  createdAt    DateTime @default(now())
+  order        Order    @relation(fields: [orderId], references: [id])
+  authorUser   User     @relation(fields: [authorUserId], references: [id])
+}
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+  orderId     String
+  actorUserId String
+  actionType  String
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  order       Order    @relation(fields: [orderId], references: [id])
+  actorUser   User     @relation(fields: [actorUserId], references: [id])
+}
+
+model AiSummary {
+  id               String    @id @default(cuid())
+  orderId          String
+  summary          String
+  riskLevel        RiskLevel @default(LOW)
+  suggestedActions Json?
+  generatedAt      DateTime  @default(now())
+  order            Order     @relation(fields: [orderId], references: [id])
 }
