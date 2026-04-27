@@ -4,38 +4,58 @@
 // Get a free hosted Postgres database in seconds: `npx create-db`
 
 generator client {
-  provider = "prisma-client-js"
-  engineType = "library"
+  provider   = "prisma-client"
+  output = "../app/generated/prisma"
 }
-  //output   = "../app/generated/prisma"
 
 datasource db {
-  provider  = "postgresql"
+  provider = "postgresql"
+}
 
+enum AppRole {
+  ADMIN
+  SUPPORT
+  MANAGER
 }
 
 enum OrderStatus {
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
+  NEW
+  IN_REVIEW
+  PENDING_CUSTOMER
+  PENDING_COURIER
+  RESOLVED
 }
 
-enum Priority {
+enum OrderPriority {
   LOW
   MEDIUM
   HIGH
   URGENT
 }
 
+enum ReturnStatus {
+  REQUESTED
+  APPROVED
+  IN_TRANSIT
+  RECEIVED
+  REFUNDED
+  REJECTED
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
 model Order {
-  id                String      @id @default(cuid())
-  status            OrderStatus @default(IN_PROGRESS)
-  priority          Priority    @default(LOW)
-  assignedToUserId  String?     // Folosim ? pentru că poate nu e asignat nimănui încă
-  hasIssue          Boolean     @default(false)
-  issueType         String?     // Optional
-  needsFollowUp     Boolean     @default(false)
-  
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt // Se actualizează automat la orice modificare
+  id               String        @id @default(cuid())
+  status           OrderStatus   @default(NEW)
+  priority         OrderPriority @default(LOW)
+  assignedToUserId String?
+  hasIssue         Boolean       @default(false)
+  issueType        String?
+  needsFollowUp    Boolean       @default(false)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 }

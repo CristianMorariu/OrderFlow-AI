@@ -1,8 +1,30 @@
-import { PrismaClient } from "@prisma/client";
+import "server-only";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { PrismaClient } from "@/app/generated/prisma/client";
 
-const globalForPrisma = global as unknown as { prisma: PrismaClient };
+const globalForPrisma = globalThis as unknown as {
+  db: PrismaClient | undefined;
+};
 
-// Constructorul trebuie să fie GOL în Prisma 7 pentru setup-ul nostru
-export const db = globalForPrisma.prisma || new PrismaClient();
+function createPrismaClient() {
+  const connectionString = process.env.DATABASE_URL;
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = db;
+  if (!connectionString) {
+    throw new Error("DATABASE_URL is not set");
+  }
+
+  const adapter = new PrismaPg({ connectionString });
+
+  return new PrismaClient({
+    adapter,
+    log: ["query", "error", "warn"],
+  });
+}
+
+// One PrismaClient can run many queries over time.
+// We reuse it in development so hot reload does not create new connection pools.
+export const db = globalForPrisma.db ?? createPrismaClient();
+
+if (process.env.NODE_ENV !== "production") {
+  globalForPrisma.db = db;
+}
