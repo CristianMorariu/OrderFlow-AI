@@ -1,26 +1,133 @@
 @import "tailwindcss";
 
+/* ─── Design System ─── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Backgrounds & Surfaces */
+  --bg: #f3f4f6;
+  --surface: #ffffff;
+  --sidebar-bg: #f9fafb;
+
+  /* Borders */
+  --border: #e5e7eb;
+  --border-light: #f3f4f6;
+
+  /* Text */
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --text-muted: #9ca3af;
+
+  /* Accent (Albastru) */
+  --accent: #2563eb;
+  --accent-600: #1d4ed8;
+  --accent-bg: #eff6ff;
+
+  /* Semantic */
+  --green: #059669;
+  --green-bg: #ecfdf5;
+  --red: #dc2626;
+  --red-bg: #fef2f2;
+  --amber: #d97706;
+  --amber-bg: #fffbeb;
+
+  /* Sizes */
+  --radius: 10px;
+  --radius-sm: 6px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
+/* Tailwind v4 theme — mapează variabilele CSS la utilități Tailwind */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-sidebar-bg: var(--sidebar-bg);
+  --color-border: var(--border);
+  --color-border-light: var(--border-light);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-accent: var(--accent);
+  --color-accent-600: var(--accent-600);
+  --color-accent-bg: var(--accent-bg);
+  --color-green: var(--green);
+  --color-green-bg: var(--green-bg);
+  --color-red: var(--red);
+  --color-red-bg: var(--red-bg);
+  --color-amber: var(--amber);
+  --color-amber-bg: var(--amber-bg);
+  --radius: var(--radius);
+  --radius-sm: var(--radius-sm);
+  --shadow-sm: var(--shadow-sm);
+  --shadow: var(--shadow);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Base styles */
+html,
+body {
+  height: 100%;
+  font-family:
+    var(--font-sans),
+    -apple-system,
+    BlinkMacSystemFont,
+    system-ui,
+    sans-serif;
+  color: var(--text-primary);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ─── Tag / Badge variants ─── */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  line-height: 1.4;
+}
+
+.tag--critical {
+  background: var(--red-bg);
+  color: var(--red);
+  border: 1px solid #fecaca;
+}
+
+.tag--high {
+  background: var(--amber-bg);
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
+
+.tag--medium {
+  background: var(--accent-bg);
+  color: var(--accent-600);
+  border: 1px solid #bfdbfe;
+}
+
+.tag--low {
+  background: var(--border-light);
+  color: var(--text-muted);
+}
+
+.tag--delayed {
+  background: var(--red-bg);
+  color: #991b1b;
+}
+
+.tag--pending {
+  background: var(--amber-bg);
+  color: #92400e;
+}
+
+.tag--exception {
+  background: #f3f4f6;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
 }

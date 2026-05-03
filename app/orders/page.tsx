@@ -1,6 +1,25 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
+import {
+  Search,
+  Filter,
+  ArrowUpDown,
+  MoreHorizontal,
+  Plus,
+  Download,
+} from "lucide-react";
+import StatusBadge from "@/components/ui/StatusBadge";
+import PriorityBadge from "@/components/ui/PriorityBadge";
+import AgentBadge from "@/components/ui/AgentBadge";
 
+// Helper pentru formatare dată
+function formatDate(date: Date) {
+  return new Intl.DateTimeFormat("ro-RO", {
+    dateStyle: "medium",
+  }).format(date);
+}
+
+// Helper pentru formatare bani
 function formatCurrency(amount: number, currency: string) {
   return new Intl.NumberFormat("ro-RO", {
     style: "currency",
@@ -8,185 +27,167 @@ function formatCurrency(amount: number, currency: string) {
   }).format(amount);
 }
 
-function formatDate(date: Date) {
-  return new Intl.DateTimeFormat("ro-RO", {
-    dateStyle: "medium",
-  }).format(date);
-}
-
 export default async function OrdersPage() {
-  // Primul query de invatare:
-  // luam comenzi si "deschidem" cateva relatii ca sa vedem cum vin datele legate.
+  // QUERY-UL: Aici "sunăm" la baza de date
+  // findMany = "adu-mi toate"
+  // include = "adu-mi și datele din tabelele legate (Customer și User)"
   const orders = await db.order.findMany({
-    orderBy: { placedAt: "desc" },
-    take: 8,
     include: {
-      customer: true,
-      assignedToUser: true,
-      items: true,
-      _count: {
-        select: {
-          returns: true,
-          notes: true,
-          activityLogs: true,
-          aiSummaries: true,
-        },
-      },
-      returns: true,
+      customer: true, // Acum avem acces la order.customer.fullName
+      assignedToUser: true, // Acum avem acces la order.assignedToUser.name
+    },
+    orderBy: {
+      placedAt: "desc", // Cele mai noi comenzi apar primele
     },
   });
-  console.log(orders);
+  // console.log(orders);
   return (
-    <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100">
-      <div className="mx-auto max-w-6xl space-y-8">
-        <section className="space-y-3">
-          <p className="text-sm uppercase tracking-[0.3em] text-cyan-300">
-            Prisma Relations Lab
+    <div className="space-y-6 p-7">
+      {/* Header Pagina */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">
+            Orders
+          </h1>
+          <p className="text-sm text-[var(--text-muted)]">
+            Manage and track all customer orders.
           </p>
-          <h1 className="text-3xl font-semibold">Orders + relatiile lor</h1>
-          <p className="max-w-3xl text-sm leading-6 text-slate-300">
-            Pagina asta foloseste un Server Component si query Prisma direct in
-            `page.tsx`. Asa vezi clar cum `include` aduce date din tabelele
-            legate fara sa faci fetch separat din browser.
-          </p>
-        </section>
-
-        <section className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-            <p className="text-sm text-slate-400">Comenzi afisate</p>
-            <p className="mt-2 text-3xl font-semibold">{orders.length}</p>
-          </div>
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-            <p className="text-sm text-slate-400">Cu issue activ</p>
-            <p className="mt-2 text-3xl font-semibold">
-              {orders.filter((order) => order.hasIssue).length}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-            <p className="text-sm text-slate-400">Cu follow-up</p>
-            <p className="mt-2 text-3xl font-semibold">
-              {orders.filter((order) => order.needsFollowUp).length}
-            </p>
-          </div>
-        </section>
-
-        <section className="rounded-3xl border border-slate-800 bg-slate-900/70">
-          <div className="border-b border-slate-800 px-6 py-4">
-            <h2 className="text-lg font-semibold">Query 1: `order.findMany`</h2>
-            <p className="mt-1 text-sm text-slate-400">
-              Pentru fiecare order afisam date proprii, relatia `customer`,
-              relatia optionala `assignedToUser`, colectia `items` si cateva
-              contoare calculate cu `_count`.
-            </p>
-          </div>
-
-          <div className="grid gap-4 p-4">
-            {orders.map((order) => {
-              const itemTotal = order.items.reduce(
-                (sum, item) => sum + item.quantity,
-                0,
-              );
-
-              return (
-                <article
-                  key={order.id}
-                  className="rounded-2xl border border-slate-800 bg-slate-950/70 p-5"
-                >
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="space-y-2">
-                      <div className="flex flex-wrap items-center gap-3">
-                        <h3 className="text-xl font-semibold">
-                          {order.orderNumber}
-                        </h3>
-                        <span className="rounded-full bg-cyan-500/10 px-3 py-1 text-xs text-cyan-300">
-                          {order.status}
-                        </span>
-                        <span className="rounded-full bg-amber-500/10 px-3 py-1 text-xs text-amber-300">
-                          {order.priority}
-                        </span>
-                      </div>
-
-                      <p className="text-sm text-slate-300">
-                        Customer din relatia `customer`:{" "}
-                        <span className="font-medium text-white">
-                          {order.customer.fullName}
-                        </span>{" "}
-                        ({order.customer.email})
-                      </p>
-
-                      <p className="text-sm text-slate-300">
-                        Assignee din relatia optionala `assignedToUser`:{" "}
-                        <span className="font-medium text-white">
-                          {order.assignedToUser?.name ?? "Nealocata"}
-                        </span>
-                      </p>
-                    </div>
-
-                    <div className="space-y-2 text-sm text-slate-300 lg:text-right">
-                      <p>Plasata: {formatDate(order.placedAt)}</p>
-                      <p>
-                        Total:{" "}
-                        {formatCurrency(order.totalAmount, order.currency)}
-                      </p>
-                      <p>Issue: {order.hasIssue ? order.issueType : "Nu"}</p>
-                    </div>
-                  </div>
-
-                  <div className="mt-5 grid gap-3 md:grid-cols-4">
-                    <div className="rounded-xl bg-slate-900 p-4">
-                      <p className="text-xs uppercase tracking-wide text-slate-400">
-                        Item-uri
-                      </p>
-                      <p className="mt-2 text-2xl font-semibold">
-                        {order.items.length}
-                      </p>
-                      <p className="text-sm text-slate-400">
-                        {itemTotal} bucati in total
-                      </p>
-                    </div>
-                    <div className="rounded-xl bg-slate-900 p-4">
-                      <p className="text-xs uppercase tracking-wide text-slate-400">
-                        Returns
-                      </p>
-                      <p className="mt-2 text-2xl font-semibold">
-                        {order._count.returns}
-                      </p>
-                    </div>
-                    <div className="rounded-xl bg-slate-900 p-4">
-                      <p className="text-xs uppercase tracking-wide text-slate-400">
-                        Notes
-                      </p>
-                      <p className="mt-2 text-2xl font-semibold">
-                        {order._count.notes}
-                      </p>
-                    </div>
-                    <div className="rounded-xl bg-slate-900 p-4">
-                      <p className="text-xs uppercase tracking-wide text-slate-400">
-                        Logs + AI
-                      </p>
-                      <p className="mt-2 text-2xl font-semibold">
-                        {order._count.activityLogs + order._count.aiSummaries}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-5 flex flex-wrap gap-3 text-sm">
-                    <Link
-                      href={`/orders/${order.id}`}
-                      className="rounded-full bg-white px-4 py-2 font-medium text-slate-950 transition hover:bg-cyan-300"
-                    >
-                      Vezi toate relatiile pe detaliu
-                    </Link>
-                    <span className="rounded-full border border-slate-700 px-4 py-2 text-slate-300">
-                      `order.id`: {order.id}
-                    </span>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-        </section>
+        </div>
+        <div className="flex items-center gap-3">
+          <button className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--sidebar-bg)]">
+            <Download className="h-4 w-4" />
+            Export
+          </button>
+          <button className="flex items-center gap-2 rounded-[var(--radius-sm)] bg-[var(--accent)] px-3 py-2 text-sm font-medium text-white hover:bg-[var(--accent-600)]">
+            <Plus className="h-4 w-4" />
+            Create Order
+          </button>
+        </div>
       </div>
-    </main>
+
+      {/* Filtre și Search */}
+      <div className="flex items-center justify-between gap-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] p-4">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
+          <input
+            type="text"
+            placeholder="Filter orders..."
+            className="w-full rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg)] py-2 pl-10 pr-4 text-sm outline-none focus:border-[var(--text-muted)]"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <button className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--border)] px-3 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--sidebar-bg)]">
+            <Filter className="h-4 w-4" />
+            Status
+          </button>
+          <button className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--border)] px-3 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--sidebar-bg)]">
+            <ArrowUpDown className="h-4 w-4" />
+            Priority
+          </button>
+        </div>
+      </div>
+
+      {/* Tabelul de Orders */}
+      <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr className="bg-[var(--sidebar-bg)] border-bottom border-[var(--border)]">
+              <th className="px-6 py-3 text-left font-semibold text-[var(--text-muted)] uppercase tracking-wider text-[11px]">
+                Order #
+              </th>
+              <th className="px-6 py-3 text-left font-semibold text-[var(--text-muted)] uppercase tracking-wider text-[11px]">
+                Customer
+              </th>
+              <th className="px-6 py-3 text-left font-semibold text-[var(--text-muted)] uppercase tracking-wider text-[11px]">
+                Status
+              </th>
+              <th className="px-6 py-3 text-left font-semibold text-[var(--text-muted)] uppercase tracking-wider text-[11px]">
+                Priority
+              </th>
+              <th className="px-6 py-3 text-left font-semibold text-[var(--text-muted)] uppercase tracking-wider text-[11px]">
+                Agent
+              </th>
+              <th className="px-6 py-3 text-left font-semibold text-[var(--text-muted)] uppercase tracking-wider text-[11px]">
+                Date
+              </th>
+              <th className="px-6 py-3 text-right font-semibold text-[var(--text-muted)] uppercase tracking-wider text-[11px]">
+                Amount
+              </th>
+              <th className="px-6 py-3 text-right font-semibold text-[var(--text-muted)] uppercase tracking-wider text-[11px]"></th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[var(--border-light)]">
+            {orders.map((order) => (
+              <tr
+                key={order.id}
+                className="hover:bg-[#fafafa] transition-colors group"
+              >
+                <td className="px-6 py-4 font-mono text-xs font-medium text-[var(--text-primary)]">
+                  <Link
+                    href={`/orders/${order.id}`}
+                    className="hover:text-[var(--accent)] hover:underline"
+                  >
+                    {order.orderNumber}
+                  </Link>
+                </td>
+                <td className="px-6 py-4">
+                  <div className="font-medium text-[var(--text-primary)]">
+                    {order.customer.fullName}
+                  </div>
+                  <div className="text-xs text-[var(--text-muted)]">
+                    {order.customer.email}
+                  </div>
+                </td>
+                <td className="px-6 py-4">
+                  <StatusBadge status={order.status} />
+                </td>
+                <td className="px-6 py-4">
+                  <PriorityBadge priority={order.priority} />
+                </td>
+                <td className="px-6 py-4">
+                  <AgentBadge name={order.assignedToUser?.name ?? null} />
+                </td>
+                <td className="px-6 py-4 text-[var(--text-secondary)]">
+                  {formatDate(order.placedAt)}
+                </td>
+                <td className="px-6 py-4 text-right font-medium text-[var(--text-primary)]">
+                  {formatCurrency(order.totalAmount, order.currency)}
+                </td>
+                <td className="px-6 py-4 text-right">
+                  <button className="p-1 rounded-md hover:bg-[var(--border-light)] text-[var(--text-muted)]">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {/* Footer Tabel (Paginare - Placeholder) */}
+        <div className="flex items-center justify-between px-6 py-4 border-t border-[var(--border)] bg-[var(--sidebar-bg)]">
+          <div className="text-xs text-[var(--text-muted)]">
+            Showing{" "}
+            <span className="font-medium text-[var(--text-primary)]">
+              {orders.length}
+            </span>{" "}
+            orders
+          </div>
+          <div className="flex gap-2">
+            <button
+              disabled
+              className="px-3 py-1 text-xs font-medium rounded border border-[var(--border)] bg-[var(--surface)] opacity-50"
+            >
+              Previous
+            </button>
+            <button
+              disabled
+              className="px-3 py-1 text-xs font-medium rounded border border-[var(--border)] bg-[var(--surface)] opacity-50"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
