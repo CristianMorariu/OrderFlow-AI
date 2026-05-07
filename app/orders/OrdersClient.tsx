@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { Search, ChevronDown } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Search, ChevronDown, RotateCcw } from "lucide-react";
 import StatusBadge from "@/components/ui/StatusBadge";
 import PriorityBadge from "@/components/ui/PriorityBadge";
 import AgentBadge from "@/components/ui/AgentBadge";
@@ -22,7 +21,6 @@ function formatCurrency(amount: number, currency: string) {
   }).format(amount);
 }
 
-// Statusurile disponibile (aceleași ca în enum)
 const STATUS_OPTIONS = [
   { value: "", label: "All Statuses" },
   { value: "NEW", label: "New" },
@@ -40,7 +38,6 @@ const PRIORITY_OPTIONS = [
   { value: "URGENT", label: "Urgent" },
 ];
 
-// Tipul pentru o comandă (venită din API)
 type OrderItem = {
   id: string;
   orderNumber: string;
@@ -56,69 +53,161 @@ type OrderItem = {
 };
 
 export default function OrdersClient() {
-  const router = useRouter();
+  // Stări pentru filtre
+  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [status, setStatus] = useState("");
+  const [priority, setPriority] = useState("");
+  const [hasIssue, setHasIssue] = useState(false);
+  const [needsFollowUp, setNeedsFollowUp] = useState(false);
+  const [page, setPage] = useState(1);
 
-  // Stări
+  // Stări pentru date
   const [orders, setOrders] = useState<OrderItem[]>([]);
   const [totalCount, setTotalCount] = useState(0);
-  const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
 
-  // Stări pentru filtre
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("");
-  const [priority, setPriority] = useState("");
-
-  const pageSize = 10;
+  // Ref pentru a nu re-apela fetch când se montează de 2 ori (StrictMode)
+  const fetchedRef = useRef(false);
 
   // === Funcția care face fetch la API ===
-  const fetchOrders = useCallback(async () => {
-    setLoading(true);
+  // Primește parametri direct, nu depinde de stări → zero cascading
+  const fetchOrders = useCallback(
+    async (opts: {
+      searchVal: string;
+      statusVal: string;
+      priorityVal: string;
+      hasIssueVal: boolean;
+      needsFollowUpVal: boolean;
+      pageVal: number;
+    }) => {
+      setLoading(true);
 
-    // Construim URL-ul cu query params
-    const params = new URLSearchParams();
-    if (search) params.set("search", search);
-    if (status) params.set("status", status);
-    if (priority) params.set("priority", priority);
-    params.set("page", String(page));
+      const params = new URLSearchParams();
+      if (opts.searchVal) params.set("search", opts.searchVal);
+      if (opts.statusVal) params.set("status", opts.statusVal);
+      if (opts.priorityVal) params.set("priority", opts.priorityVal);
+      if (opts.hasIssueVal) params.set("issue", "true");
+      if (opts.needsFollowUpVal) params.set("followup", "true");
+      params.set("page", String(opts.pageVal));
 
-    const res = await fetch(`/api/orders?${params.toString()}`);
-    const data = await res.json();
+      const res = await fetch(`/api/orders?${params.toString()}`);
+      const data = await res.json();
 
-    setOrders(data.orders);
-    setTotalCount(data.totalCount);
-    setTotalPages(data.totalPages);
-    setLoading(false);
-  }, [search, status, priority, page]);
+      setOrders(data.orders);
+      setTotalCount(data.totalCount);
+      setTotalPages(data.totalPages);
+      setLoading(false);
+    },
+    [],
+  );
 
-  // === Când se schimbă un filtru, reîncărcăm datele ===
+  // === Fetch inițial (o singură dată) ===
   useEffect(() => {
-    fetchOrders();
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
+    fetchOrders({
+      searchVal: "",
+      statusVal: "",
+      priorityVal: "",
+      hasIssueVal: false,
+      needsFollowUpVal: false,
+      pageVal: 1,
+    });
   }, [fetchOrders]);
 
-  // === Search cu debounce: așteaptă 300ms după ultima tastare ===
-  const [searchInput, setSearchInput] = useState("");
-
+  // === Search cu debounce: așteaptă 300ms ===
   useEffect(() => {
     const timer = setTimeout(() => {
       setSearch(searchInput);
-      setPage(1); // Reset la pagina 1 când cauți
+      setPage(1);
+      fetchOrders({
+        searchVal: searchInput,
+        statusVal: status,
+        priorityVal: priority,
+        hasIssueVal: hasIssue,
+        needsFollowUpVal: needsFollowUp,
+        pageVal: 1,
+      });
     }, 300);
-
     return () => clearTimeout(timer);
+    // Intenționat NU punem fetchOrders în dependencies — apelăm direct
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchInput]);
 
-  // === Când se schimbă status/priority, resetăm la pagina 1 ===
-  const handleStatusChange = (newStatus: string) => {
-    setStatus(newStatus);
+  // === Când se schimbă dropdown-urile sau checkbox-urile ===
+  const applyFilters = useCallback(
+    (overrides: {
+      status?: string;
+      priority?: string;
+      hasIssue?: boolean;
+      needsFollowUp?: boolean;
+      page?: number;
+    }) => {
+      const newStatus = overrides.status ?? status;
+      const newPriority = overrides.priority ?? priority;
+      const newHasIssue = overrides.hasIssue ?? hasIssue;
+      const newNeedsFollowUp = overrides.needsFollowUp ?? needsFollowUp;
+      const newPage = overrides.page ?? 1;
+
+      // Actualizăm stările
+      if (overrides.status !== undefined) setStatus(overrides.status);
+      if (overrides.priority !== undefined) setPriority(overrides.priority);
+      if (overrides.hasIssue !== undefined) setHasIssue(overrides.hasIssue);
+      if (overrides.needsFollowUp !== undefined)
+        setNeedsFollowUp(overrides.needsFollowUp);
+      setPage(newPage);
+
+      // Fetch direct, fără a aștepta să se propage stările
+      fetchOrders({
+        searchVal: search,
+        statusVal: newStatus,
+        priorityVal: newPriority,
+        hasIssueVal: newHasIssue,
+        needsFollowUpVal: newNeedsFollowUp,
+        pageVal: newPage,
+      });
+    },
+    [search, status, priority, hasIssue, needsFollowUp, fetchOrders],
+  );
+
+  // === Clear all filters ===
+  const clearFilters = () => {
+    setSearch("");
+    setSearchInput("");
+    setStatus("");
+    setPriority("");
+    setHasIssue(false);
+    setNeedsFollowUp(false);
     setPage(1);
+
+    fetchOrders({
+      searchVal: "",
+      statusVal: "",
+      priorityVal: "",
+      hasIssueVal: false,
+      needsFollowUpVal: false,
+      pageVal: 1,
+    });
   };
 
-  const handlePriorityChange = (newPriority: string) => {
-    setPriority(newPriority);
-    setPage(1);
+  // === Paginare ===
+  const goToPage = (newPage: number) => {
+    setPage(newPage);
+    fetchOrders({
+      searchVal: search,
+      statusVal: status,
+      priorityVal: priority,
+      hasIssueVal: hasIssue,
+      needsFollowUpVal: needsFollowUp,
+      pageVal: newPage,
+    });
   };
+
+  // Verificăm dacă avem filtre active (pentru butonul de clear)
+  const hasActiveFilters =
+    search || status || priority || hasIssue || needsFollowUp;
 
   return (
     <div className="space-y-6 p-7">
@@ -134,10 +223,10 @@ export default function OrdersClient() {
         </div>
       </div>
 
-      {/* ─── Search + Dropdown-uri ─── */}
-      <div className="flex items-center justify-between gap-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] p-4">
+      {/* ─── Search + Filtre ─── */}
+      <div className="flex flex-wrap items-center gap-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] p-4">
         {/* Search live */}
-        <div className="relative flex-1 max-w-md">
+        <div className="relative flex-1 min-w-[200px] max-w-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
           <input
             type="text"
@@ -149,39 +238,73 @@ export default function OrdersClient() {
         </div>
 
         {/* Dropdown-uri */}
-        <div className="flex items-center gap-2">
-          {/* Status dropdown */}
-          <div className="relative">
-            <select
-              value={status}
-              onChange={(e) => handleStatusChange(e.target.value)}
-              className="appearance-none rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg)] py-2 pl-3 pr-8 text-sm text-[var(--text-secondary)] outline-none focus:border-[var(--text-muted)] cursor-pointer"
-            >
-              {STATUS_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
-          </div>
-
-          {/* Priority dropdown */}
-          <div className="relative">
-            <select
-              value={priority}
-              onChange={(e) => handlePriorityChange(e.target.value)}
-              className="appearance-none rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg)] py-2 pl-3 pr-8 text-sm text-[var(--text-secondary)] outline-none focus:border-[var(--text-muted)] cursor-pointer"
-            >
-              {PRIORITY_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
-          </div>
+        <div className="relative">
+          <select
+            value={status}
+            onChange={(e) => applyFilters({ status: e.target.value, page: 1 })}
+            className="appearance-none rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg)] py-2 pl-3 pr-8 text-sm text-[var(--text-secondary)] outline-none focus:border-[var(--text-muted)] cursor-pointer"
+          >
+            {STATUS_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
         </div>
+
+        <div className="relative">
+          <select
+            value={priority}
+            onChange={(e) =>
+              applyFilters({ priority: e.target.value, page: 1 })
+            }
+            className="appearance-none rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg)] py-2 pl-3 pr-8 text-sm text-[var(--text-secondary)] outline-none focus:border-[var(--text-muted)] cursor-pointer"
+          >
+            {PRIORITY_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
+        </div>
+
+        {/* Checkbox-uri */}
+        <label className="flex items-center gap-2 text-sm text-[var(--text-secondary)] cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={hasIssue}
+            onChange={(e) =>
+              applyFilters({ hasIssue: e.target.checked, page: 1 })
+            }
+            className="rounded border-[var(--border)] text-[var(--accent)] focus:ring-[var(--accent)] cursor-pointer"
+          />
+          Has Issue
+        </label>
+
+        <label className="flex items-center gap-2 text-sm text-[var(--text-secondary)] cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={needsFollowUp}
+            onChange={(e) =>
+              applyFilters({ needsFollowUp: e.target.checked, page: 1 })
+            }
+            className="rounded border-[var(--border)] text-[var(--accent)] focus:ring-[var(--accent)] cursor-pointer"
+          />
+          Needs Follow-up
+        </label>
+
+        {/* Clear Filters */}
+        {hasActiveFilters && (
+          <button
+            onClick={clearFilters}
+            className="flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-[var(--border)] px-3 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--sidebar-bg)] transition-colors cursor-pointer"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            Clear
+          </button>
+        )}
       </div>
 
       {/* ─── Loading state ─── */}
@@ -194,7 +317,6 @@ export default function OrdersClient() {
           </div>
         </div>
       ) : orders.length === 0 ? (
-        /* ─── Empty State ─── */
         <EmptyState
           title="No orders found"
           description="Try adjusting your search or filters."
@@ -284,7 +406,7 @@ export default function OrdersClient() {
             <div className="flex gap-2">
               {page > 1 && (
                 <button
-                  onClick={() => setPage(page - 1)}
+                  onClick={() => goToPage(page - 1)}
                   className="px-3 py-1 text-xs font-medium rounded border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--sidebar-bg)] transition-colors cursor-pointer"
                 >
                   Previous
@@ -292,7 +414,7 @@ export default function OrdersClient() {
               )}
               {page < totalPages && (
                 <button
-                  onClick={() => setPage(page + 1)}
+                  onClick={() => goToPage(page + 1)}
                   className="px-3 py-1 text-xs font-medium rounded border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--sidebar-bg)] transition-colors cursor-pointer"
                 >
                   Next

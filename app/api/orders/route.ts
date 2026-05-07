@@ -7,6 +7,8 @@ export async function GET(request: Request) {
   const search = searchParams.get("search") || "";
   const status = searchParams.get("status") || "";
   const priority = searchParams.get("priority") || "";
+  const issue = searchParams.get("issue") === "true";
+  const followup = searchParams.get("followup") === "true";
   const page = Number(searchParams.get("page")) || 1;
   const pageSize = 10;
 
@@ -21,6 +23,12 @@ export async function GET(request: Request) {
   }
   if (priority) {
     where.priority = priority;
+  }
+  if (issue) {
+    where.hasIssue = true;
+  }
+  if (followup) {
+    where.needsFollowUp = true;
   }
 
   // Query paralel: comenzi + numărul total
