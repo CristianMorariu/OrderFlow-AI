@@ -224,7 +224,7 @@ export default function OrdersClient() {
       </div>
 
       {/* ─── Search + Filtre ─── */}
-      <div className="flex flex-wrap items-center gap-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] p-4">
+      <div className="flex justify-between flex-wrap items-center gap-4 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] p-4">
         {/* Search live */}
         <div className="relative flex-1 min-w-[200px] max-w-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
@@ -237,74 +237,78 @@ export default function OrdersClient() {
           />
         </div>
 
-        {/* Dropdown-uri */}
-        <div className="relative">
-          <select
-            value={status}
-            onChange={(e) => applyFilters({ status: e.target.value, page: 1 })}
-            className="appearance-none rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg)] py-2 pl-3 pr-8 text-sm text-[var(--text-secondary)] outline-none focus:border-[var(--text-muted)] cursor-pointer"
-          >
-            {STATUS_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
+        <div className="flex flex-wrap gap-4">
+          {/* Dropdown-uri */}
+          <div className="relative">
+            <select
+              value={status}
+              onChange={(e) =>
+                applyFilters({ status: e.target.value, page: 1 })
+              }
+              className="appearance-none rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg)] py-2 pl-3 pr-8 text-sm text-[var(--text-secondary)] outline-none focus:border-[var(--text-muted)] cursor-pointer"
+            >
+              {STATUS_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
+          </div>
+
+          <div className="relative">
+            <select
+              value={priority}
+              onChange={(e) =>
+                applyFilters({ priority: e.target.value, page: 1 })
+              }
+              className="appearance-none rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg)] py-2 pl-3 pr-8 text-sm text-[var(--text-secondary)] outline-none focus:border-[var(--text-muted)] cursor-pointer"
+            >
+              {PRIORITY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
+          </div>
+
+          {/* Checkbox-uri */}
+          <label className="flex items-center rounded-[var(--radius-sm)] border border-[var(--border)] px-3 py-2 gap-2 text-sm text-[var(--text-secondary)] cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={hasIssue}
+              onChange={(e) =>
+                applyFilters({ hasIssue: e.target.checked, page: 1 })
+              }
+              className="rounded border-[var(--border)] text-[var(--accent)] focus:ring-[var(--accent)] cursor-pointer"
+            />
+            Has Issue
+          </label>
+
+          <label className="flex items-center rounded-[var(--radius-sm)] border border-[var(--border)] px-3 py-2 gap-2 text-sm text-[var(--text-secondary)] cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={needsFollowUp}
+              onChange={(e) =>
+                applyFilters({ needsFollowUp: e.target.checked, page: 1 })
+              }
+              className="rounded border-[var(--border)] text-[var(--accent)] focus:ring-[var(--accent)] cursor-pointer"
+            />
+            Needs Follow-up
+          </label>
+
+          {/* Clear Filters */}
+          {hasActiveFilters && (
+            <button
+              onClick={clearFilters}
+              className="flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-[var(--border)] px-3 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--sidebar-bg)] transition-colors cursor-pointer"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Clear
+            </button>
+          )}
         </div>
-
-        <div className="relative">
-          <select
-            value={priority}
-            onChange={(e) =>
-              applyFilters({ priority: e.target.value, page: 1 })
-            }
-            className="appearance-none rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--bg)] py-2 pl-3 pr-8 text-sm text-[var(--text-secondary)] outline-none focus:border-[var(--text-muted)] cursor-pointer"
-          >
-            {PRIORITY_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          <ChevronDown className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
-        </div>
-
-        {/* Checkbox-uri */}
-        <label className="flex items-center gap-2 text-sm text-[var(--text-secondary)] cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={hasIssue}
-            onChange={(e) =>
-              applyFilters({ hasIssue: e.target.checked, page: 1 })
-            }
-            className="rounded border-[var(--border)] text-[var(--accent)] focus:ring-[var(--accent)] cursor-pointer"
-          />
-          Has Issue
-        </label>
-
-        <label className="flex items-center gap-2 text-sm text-[var(--text-secondary)] cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={needsFollowUp}
-            onChange={(e) =>
-              applyFilters({ needsFollowUp: e.target.checked, page: 1 })
-            }
-            className="rounded border-[var(--border)] text-[var(--accent)] focus:ring-[var(--accent)] cursor-pointer"
-          />
-          Needs Follow-up
-        </label>
-
-        {/* Clear Filters */}
-        {hasActiveFilters && (
-          <button
-            onClick={clearFilters}
-            className="flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-[var(--border)] px-3 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--sidebar-bg)] transition-colors cursor-pointer"
-          >
-            <RotateCcw className="h-3.5 w-3.5" />
-            Clear
-          </button>
-        )}
       </div>
 
       {/* ─── Loading state ─── */}

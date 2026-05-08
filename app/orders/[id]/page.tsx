@@ -16,6 +16,7 @@ import {
 import StatusBadge from "@/components/ui/StatusBadge";
 import PriorityBadge from "@/components/ui/PriorityBadge";
 import AgentBadge from "@/components/ui/AgentBadge";
+import ManagementControls from "@/components/ManagementControls";
 
 // Helper pentru formatare bani
 function formatCurrency(amount: number, currency: string) {
@@ -42,26 +43,31 @@ export default async function OrderDetailPage({
 }) {
   const { id } = await params;
 
-  const order = await db.order.findUnique({
-    where: { id },
-    include: {
-      customer: true,
-      assignedToUser: true,
-      items: true,
-      notes: {
-        include: { authorUser: true },
-        orderBy: { createdAt: "desc" },
+  const [order, users] = await Promise.all([
+    db.order.findUnique({
+      where: { id },
+      include: {
+        customer: true,
+        assignedToUser: true,
+        items: true,
+        notes: {
+          include: { authorUser: true },
+          orderBy: { createdAt: "desc" },
+        },
+        activityLogs: {
+          include: { actorUser: true },
+          orderBy: { createdAt: "desc" },
+        },
+        aiSummaries: {
+          orderBy: { generatedAt: "desc" },
+          take: 1,
+        },
       },
-      activityLogs: {
-        include: { actorUser: true },
-        orderBy: { createdAt: "desc" },
-      },
-      aiSummaries: {
-        orderBy: { generatedAt: "desc" },
-        take: 1,
-      },
-    },
-  });
+    }),
+    db.user.findMany({
+      orderBy: { name: "asc" },
+    }),
+  ]);
 
   if (!order) {
     notFound();
@@ -233,53 +239,15 @@ export default async function OrderDetailPage({
 
           {/* Right Column (Sidebar) */}
           <div className="space-y-6">
-            {/* Management Controls */}
-            <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] p-6">
-              <h2 className="text-base font-semibold text-[var(--text-primary)] mb-4">
-                Management Controls
-              </h2>
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                    Status
-                  </label>
-                  <div className="flex items-center justify-between rounded-md border border-[var(--border)] px-3 py-2 text-sm">
-                    <span>{order.status.replace("_", " ")}</span>
-                    <ChevronDown className="h-4 w-4 text-[var(--text-muted)]" />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                    Priority
-                  </label>
-                  <div className="flex items-center justify-between rounded-md border border-[var(--border)] px-3 py-2 text-sm">
-                    <span>{order.priority}</span>
-                    <ChevronDown className="h-4 w-4 text-[var(--text-muted)]" />
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                    Assignee
-                  </label>
-                  <div className="flex items-center justify-between rounded-md border border-[var(--border)] px-3 py-2 text-sm">
-                    <span>{order.assignedToUser?.name ?? "Unassigned"}</span>
-                    <ChevronDown className="h-4 w-4 text-[var(--text-muted)]" />
-                  </div>
-                </div>
-                <div className="flex items-center justify-between pt-2">
-                  <span className="text-xs font-medium text-[var(--text-secondary)]">
-                    Requires Follow-up
-                  </span>
-                  <div
-                    className={`h-5 w-9 rounded-full p-1 transition-colors ${order.needsFollowUp ? "bg-black" : "bg-slate-200"}`}
-                  >
-                    <div
-                      className={`h-3 w-3 rounded-full bg-white transition-transform ${order.needsFollowUp ? "translate-x-4" : ""}`}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
+            <ManagementControls
+              orderId={order.id}
+              currentStatus={order.status}
+              currentPriority={order.priority}
+              currentAssigneeId={order.assignedToUserId}
+              currentAssigneeName={order.assignedToUser?.name ?? null}
+              needsFollowUp={order.needsFollowUp}
+              users={users}
+            />
 
             {/* Customer Info */}
             <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] p-6">
