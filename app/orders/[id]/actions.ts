@@ -4,44 +4,34 @@ import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 
 // === Update Status ===
-export async function updateStatus(orderId: string, newStatus: string) {
-  // 1. Citim comanda curentă ca să știm statusul vechi
-  const order = await db.order.findUnique({
-    where: { id: orderId },
-    select: { status: true },
-  });
-
-  if (!order) throw new Error("Order not found");
-
-  // 2. Actualizăm statusul
+export async function updateStatus(
+  orderId: string,
+  newStatus: string,
+  oldStatus: string,
+) {
   await db.order.update({
     where: { id: orderId },
     data: { status: newStatus as any },
   });
 
-  // 3. Înregistrăm în activity log
   await db.activityLog.create({
     data: {
       orderId,
-      actorUserId: "cmoimxqnl0000vcvoalpkzr52", // TODO: înlocuiește cu user-ul real când ai auth
+      actorUserId: "cmoimxqnl0000vcvoalpkzr52",
       actionType: "status_changed",
-      metadata: { old: order.status, new: newStatus },
+      metadata: { old: oldStatus, new: newStatus },
     },
   });
 
-  // 4. Re-randează pagina pe server
   revalidatePath(`/orders/${orderId}`);
 }
 
 // === Update Priority ===
-export async function updatePriority(orderId: string, newPriority: string) {
-  const order = await db.order.findUnique({
-    where: { id: orderId },
-    select: { priority: true },
-  });
-
-  if (!order) throw new Error("Order not found");
-
+export async function updatePriority(
+  orderId: string,
+  newPriority: string,
+  oldPriority: string,
+) {
   await db.order.update({
     where: { id: orderId },
     data: { priority: newPriority as any },
@@ -52,7 +42,7 @@ export async function updatePriority(orderId: string, newPriority: string) {
       orderId,
       actorUserId: "cmoimxqnl0000vcvoalpkzr52",
       actionType: "priority_changed",
-      metadata: { old: order.priority, new: newPriority },
+      metadata: { old: oldPriority, new: newPriority },
     },
   });
 
@@ -60,14 +50,11 @@ export async function updatePriority(orderId: string, newPriority: string) {
 }
 
 // === Update Assignee ===
-export async function updateAssignee(orderId: string, newUserId: string) {
-  const order = await db.order.findUnique({
-    where: { id: orderId },
-    select: { assignedToUserId: true },
-  });
-
-  if (!order) throw new Error("Order not found");
-
+export async function updateAssignee(
+  orderId: string,
+  newUserId: string,
+  oldUserId: string | null,
+) {
   await db.order.update({
     where: { id: orderId },
     data: { assignedToUserId: newUserId || null },
@@ -78,7 +65,7 @@ export async function updateAssignee(orderId: string, newUserId: string) {
       orderId,
       actorUserId: "cmoimxqnl0000vcvoalpkzr52",
       actionType: "assignee_changed",
-      metadata: { old: order.assignedToUserId, new: newUserId },
+      metadata: { old: oldUserId, new: newUserId },
     },
   });
 
@@ -98,6 +85,34 @@ export async function toggleFollowUp(orderId: string, currentValue: boolean) {
       actorUserId: "cmoimxqnl0000vcvoalpkzr52",
       actionType: "follow_up_toggled",
       metadata: { old: currentValue, new: !currentValue },
+    },
+  });
+
+  revalidatePath(`/orders/${orderId}`);
+}
+
+// === Add Note ===
+export async function addNote(orderId: string, formData: FormData) {
+  const body = formData.get("body") as string;
+
+  if (!body || !body.trim()) {
+    throw new Error("Note body is required");
+  }
+
+  await db.note.create({
+    data: {
+      orderId,
+      authorUserId: "cmoimxqnl0000vcvoalpkzr52",
+      body: body.trim(),
+    },
+  });
+
+  await db.activityLog.create({
+    data: {
+      orderId,
+      actorUserId: "cmoimxqnl0000vcvoalpkzr52",
+      actionType: "note_added",
+      metadata: { notePreview: body.trim().slice(0, 100) },
     },
   });
 

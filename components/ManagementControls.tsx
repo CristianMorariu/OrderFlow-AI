@@ -56,10 +56,10 @@ export default function ManagementControls({
   // === Status dropdown ===
   const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newStatus = e.target.value;
-    if (newStatus === currentStatus) return; // n-a schimbat nimic
+    if (newStatus === currentStatus) return;
 
     startTransition(async () => {
-      await updateStatus(orderId, newStatus);
+      await updateStatus(orderId, newStatus, currentStatus);
     });
   };
 
@@ -69,7 +69,7 @@ export default function ManagementControls({
     if (newPriority === currentPriority) return;
 
     startTransition(async () => {
-      await updatePriority(orderId, newPriority);
+      await updatePriority(orderId, newPriority, currentPriority);
     });
   };
 
@@ -79,7 +79,7 @@ export default function ManagementControls({
     if (newUserId === (currentAssigneeId ?? "")) return;
 
     startTransition(async () => {
-      await updateAssignee(orderId, newUserId);
+      await updateAssignee(orderId, newUserId, currentAssigneeId);
     });
   };
 
