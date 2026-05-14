@@ -2,6 +2,7 @@
 
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { generateAISummary } from "@/lib/ai";
 
 // === Update Status ===
 export async function updateStatus(
@@ -116,5 +117,84 @@ export async function addNote(orderId: string, formData: FormData) {
     },
   });
 
+  revalidatePath(`/orders/${orderId}`);
+}
+
+// === Generate AI Summary ===
+
+export async function generateAISummaryAction(orderId: string) {
+  // 1. Citește comanda cu toate relațiile
+  const order = await db.order.findUnique({
+    where: { id: orderId },
+    include: {
+      customer: true,
+      assignedToUser: true,
+      items: true,
+      notes: {
+        include: { authorUser: true },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+      },
+      activityLogs: {
+        include: { actorUser: true },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+      },
+      returns: true,
+    },
+  });
+
+  if (!order) {
+    throw new Error("Order not found");
+  }
+
+  // 2. Trimite la OpenRouter
+  const result = await generateAISummary({
+    orderNumber: order.orderNumber,
+    status: order.status,
+    priority: order.priority,
+    totalAmount: order.totalAmount,
+    currency: order.currency,
+    placedAt: order.placedAt,
+    hasIssue: order.hasIssue,
+    issueType: order.issueType,
+    needsFollowUp: order.needsFollowUp,
+    customer: order.customer,
+    assignedToUser: order.assignedToUser,
+    items: order.items,
+    notes: order.notes,
+    activityLogs: order.activityLogs,
+    returns: order.returns,
+  });
+
+  // 3. Șterge vechiul AiSummary (dacă există)
+  await db.aiSummary.deleteMany({
+    where: { orderId },
+  });
+
+  // 4. Salvează summary-ul nou
+  await db.aiSummary.create({
+    data: {
+      orderId,
+      summary: result.summary,
+      riskLevel: result.riskLevel,
+      suggestedActions: result.suggestedActions,
+    },
+  });
+
+  // 5. Adaugă activity log
+  await db.activityLog.create({
+    data: {
+      orderId,
+      actorUserId: "cmoimxqnl0000vcvoalpkzr52",
+      actionType: "ai_summary_generated",
+      metadata: {
+        riskLevel: result.riskLevel,
+        suggestedActionCount: result.suggestedActions.length,
+      },
+    },
+  });
+
+  // 6. Revalidatează pagina
   revalidatePath(`/orders/${orderId}`);
 }

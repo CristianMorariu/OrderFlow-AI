@@ -5,19 +5,16 @@ import {
   ArrowLeft,
   User,
   AlertTriangle,
-  Bot,
-  ChevronDown,
   Mail,
   Phone,
   Building2,
-  History,
-  MessageSquare,
 } from "lucide-react";
 import StatusBadge from "@/components/ui/StatusBadge";
 import PriorityBadge from "@/components/ui/PriorityBadge";
-import AgentBadge from "@/components/ui/AgentBadge";
+
 import ManagementControls from "@/components/ManagementControls";
 import AddNoteForm from "@/components/AddNoteForm";
+import AISummary from "@/components/AISummary";
 
 // Helper pentru formatare bani
 function formatCurrency(amount: number, currency: string) {
@@ -118,32 +115,10 @@ export default async function OrderDetailPage({
           {/* Left Column */}
           <div className="space-y-6">
             {/* AI Insight Summary */}
-            <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] p-6">
-              <div className="flex gap-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100">
-                  <Bot className="h-6 w-6 text-slate-600" />
-                </div>
-                <div className="space-y-4">
-                  <div>
-                    <h2 className="text-base font-semibold text-[var(--text-primary)]">
-                      AI Insight Summary
-                    </h2>
-                    <p className="mt-1 text-sm leading-relaxed text-[var(--text-secondary)]">
-                      {aiSummary?.summary ??
-                        "No AI summary generated for this order yet."}
-                    </p>
-                  </div>
-                  <div className="flex gap-3">
-                    <button className="rounded-md bg-black px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800 transition-colors">
-                      Draft Update Email
-                    </button>
-                    <button className="rounded-md border border-[var(--border)] px-4 py-2 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--sidebar-bg)] transition-colors">
-                      Analyze Logistics Options
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <AISummary
+              orderId={order.id}
+              existingSummary={aiSummary?.summary ?? null}
+            />
 
             {/* Order Items */}
             <div className="rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
